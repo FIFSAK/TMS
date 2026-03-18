@@ -65,7 +65,7 @@ No external database required — SQLite is embedded and runs locally (file-base
 
 2. Run the service:
    ```bash
-   go run cmd/app/main.go
+   go run cmd/tns/main.go
    ```
 
    The gRPC server starts on `:50051` by default (configurable via `GRPC_PORT`).
