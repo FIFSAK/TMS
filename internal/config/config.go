@@ -12,17 +12,18 @@ import (
 )
 
 const (
-	defaultAppMode    = "dev"
-	defaultAppPort    = ":80"
-	defaultAppHost    = "http://localhost:80"
-	defaultAppPath    = "/"
-	defaultAppTimeout = 60 * time.Second
+	defaultAppMode     = "dev"
+	defaultAppPort     = ":80"
+	defaultAppHost     = "http://localhost:80"
+	defaultAppPath     = "/"
+	defaultAppTimeout  = 60 * time.Second
+	defaultGRPCPort    = ":50051"
 )
 
 type Configs struct {
 	APP   AppConfig
+	GRPC  GRPCConfig
 	Store StoreConfig
-	JWT   JWTConfig
 }
 
 type AppConfig struct {
@@ -33,23 +34,12 @@ type AppConfig struct {
 	Timeout time.Duration
 }
 
-type ClientConfig struct {
-	URL      string
-	Login    string
-	Password string
-	OAuth    string
-	JS       string
+type GRPCConfig struct {
+	Port string `default:":50051"`
 }
 
 type StoreConfig struct {
 	DSN string
-}
-
-type JWTConfig struct {
-	AccessSecret    string        `required:"true"`
-	RefreshSecret   string        `required:"true"`
-	AccessTokenTTL  time.Duration `default:"15m"`
-	RefreshTokenTTL time.Duration `default:"168h"`
 }
 
 func New() (*Configs, error) {
@@ -83,10 +73,14 @@ func New() (*Configs, error) {
 		Timeout: defaultAppTimeout,
 	}
 
+	cfg.GRPC = GRPCConfig{
+		Port: defaultGRPCPort,
+	}
+
 	targets := map[string]interface{}{
 		"APP":      &cfg.APP,
+		"GRPC":     &cfg.GRPC,
 		"POSTGRES": &cfg.Store,
-		"JWT":      &cfg.JWT,
 	}
 
 	for p, target := range targets {
