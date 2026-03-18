@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package shipment.v1;
+
+option go_package = "github.com/FIFSAK/TMS/pkg/pb;pb";
+
+import "google/protobuf/timestamp.proto";
+
+enum ShipmentStatus {
+  SHIPMENT_STATUS_UNSPECIFIED = 0;
+  SHIPMENT_STATUS_PENDING = 1;
+  SHIPMENT_STATUS_PICKED_UP = 2;
+  SHIPMENT_STATUS_IN_TRANSIT = 3;
+  SHIPMENT_STATUS_DELIVERED = 4;
+  SHIPMENT_STATUS_CANCELLED = 5;
+}
+
+message Shipment {
+  string id = 1;
+  string reference_number = 2;
+  string origin = 3;
+  string destination = 4;
+  ShipmentStatus status = 5;
+  string driver_name = 6;
+  string unit_number = 7;
+  double shipment_amount = 8;
+  double driver_revenue = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message ShipmentEvent {
+  string id = 1;
+  string shipment_id = 2;
+  ShipmentStatus status = 3;
+  string comment = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message CreateShipmentRequest {
+  string reference_number = 1;
+  string origin = 2;
+  string destination = 3;
+  string driver_name = 4;
+  string unit_number = 5;
+  double shipment_amount = 6;
+  double driver_revenue = 7;
+}
+
+message CreateShipmentResponse {
+  Shipment shipment = 1;
+}
+
+message GetShipmentRequest {
+  string id = 1;
+}
+
+message GetShipmentResponse {
+  Shipment shipment = 1;
+}
+
+message ListShipmentsRequest {}
+
+message ListShipmentsResponse {
+  repeated Shipment shipments = 1;
+}
+
+message AddShipmentEventRequest {
+  string shipment_id = 1;
+  ShipmentStatus status = 2;
+  string comment = 3;
+}
+
+message AddShipmentEventResponse {
+  ShipmentEvent event = 1;
+}
+
+message GetShipmentEventsRequest {
+  string shipment_id = 1;
+}
+
+message GetShipmentEventsResponse {
+  repeated ShipmentEvent events = 1;
+}
+
+service ShipmentService {
+  rpc CreateShipment(CreateShipmentRequest) returns (CreateShipmentResponse);
+  rpc GetShipment(GetShipmentRequest) returns (GetShipmentResponse);
+  rpc ListShipments(ListShipmentsRequest) returns (ListShipmentsResponse);
+  rpc AddShipmentEvent(AddShipmentEventRequest) returns (AddShipmentEventResponse);
+  rpc GetShipmentEvents(GetShipmentEventsRequest) returns (GetShipmentEventsResponse);
+}
