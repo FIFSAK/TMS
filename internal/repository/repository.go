@@ -2,14 +2,14 @@ package repository
 
 import (
 	"github.com/FIFSAK/TMS/internal/domain/shipment"
-	"github.com/FIFSAK/TMS/internal/repository/postgres"
+	sqliteRepo "github.com/FIFSAK/TMS/internal/repository/sqlite"
 	"github.com/FIFSAK/TMS/pkg/store"
 )
 
 type Configuration func(r *Repositories) error
 
 type Repositories struct {
-	postgres *store.SQL
+	store *store.SQL
 
 	Shipment shipment.Repository
 }
@@ -27,14 +27,14 @@ func New(configs ...Configuration) (s *Repositories, err error) {
 }
 
 func (r *Repositories) Close() {
-	if r.postgres != nil && r.postgres.Connection != nil {
-		r.postgres.Connection.Close()
+	if r.store != nil && r.store.Connection != nil {
+		r.store.Connection.Close()
 	}
 }
 
-func WithPostgresStore(dataSourceName string) Configuration {
+func WithSQLiteStore(dataSourceName string) Configuration {
 	return func(s *Repositories) (err error) {
-		s.postgres, err = store.NewSQL(dataSourceName)
+		s.store, err = store.NewSQL(dataSourceName)
 		if err != nil {
 			return
 		}
@@ -43,7 +43,7 @@ func WithPostgresStore(dataSourceName string) Configuration {
 			return
 		}
 
-		s.Shipment = postgres.NewShipmentRepository(s.postgres.Connection)
+		s.Shipment = sqliteRepo.NewShipmentRepository(s.store.Connection)
 
 		return
 	}

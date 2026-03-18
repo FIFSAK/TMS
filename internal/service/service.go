@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/FIFSAK/TMS/internal/config"
 	"github.com/FIFSAK/TMS/internal/repository"
-	"github.com/FIFSAK/TMS/internal/service/author"
+	shipmentSvc "github.com/FIFSAK/TMS/internal/service/shipment"
 )
 
 type Dependencies struct {
@@ -15,7 +15,7 @@ type Configuration func(s *Services) error
 
 type Services struct {
 	dependencies Dependencies
-	Author       author.Author
+	Shipment     shipmentSvc.Service
 }
 
 func New(dependencies Dependencies, configs ...Configuration) (s *Services, err error) {
@@ -32,13 +32,11 @@ func New(dependencies Dependencies, configs ...Configuration) (s *Services, err 
 	return s, nil
 }
 
-func WithLibraryService() Configuration {
-	return func(s *Services) (err error) {
-
-		s.Author = author.NewAuthorService(
-			s.dependencies.Repositories.Author,
+func WithShipmentService() Configuration {
+	return func(s *Services) error {
+		s.Shipment = shipmentSvc.NewShipmentService(
+			s.dependencies.Repositories.Shipment,
 		)
-
 		return nil
 	}
 }

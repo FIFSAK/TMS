@@ -2,7 +2,10 @@ package handler
 
 import (
 	"github.com/FIFSAK/TMS/internal/config"
+	grpcHandler "github.com/FIFSAK/TMS/internal/handler/grpc"
 	"github.com/FIFSAK/TMS/internal/service"
+	pb "github.com/FIFSAK/TMS/pkg/pb/shipment/v1"
+	"google.golang.org/grpc"
 )
 
 type Dependencies struct {
@@ -14,7 +17,7 @@ type Configuration func(h *Handlers) error
 
 type Handlers struct {
 	dependencies Dependencies
-	//TODO add grpc
+	Shipment     *grpcHandler.ShipmentHandler
 }
 
 func New(d Dependencies, configs ...Configuration) (h *Handlers, err error) {
@@ -31,4 +34,15 @@ func New(d Dependencies, configs ...Configuration) (h *Handlers, err error) {
 	return
 }
 
-//TODO add with grpc
+func WithShipmentHandler() Configuration {
+	return func(h *Handlers) error {
+		h.Shipment = grpcHandler.NewShipmentHandler(h.dependencies.Services.Shipment)
+		return nil
+	}
+}
+
+func (h *Handlers) RegisterGRPC(server *grpc.Server) {
+	if h.Shipment != nil {
+		pb.RegisterShipmentServiceServer(server, h.Shipment)
+	}
+}

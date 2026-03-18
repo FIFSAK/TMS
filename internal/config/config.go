@@ -80,7 +80,7 @@ func New() (*Configs, error) {
 	targets := map[string]interface{}{
 		"APP":      &cfg.APP,
 		"GRPC":     &cfg.GRPC,
-		"POSTGRES": &cfg.Store,
+		"SQLITE": &cfg.Store,
 	}
 
 	for p, target := range targets {

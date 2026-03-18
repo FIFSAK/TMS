@@ -52,26 +52,16 @@ func Run() {
 
 func (app *App) startServers() error {
 	if err := app.servers.Run(app.logger); err != nil {
-		app.logger.Error("server startup failed",
-			zap.Error(err),
-			zap.String("port", app.configs.APP.Port),
-		)
+		app.logger.Error("server startup failed", zap.Error(err))
 		return err
 	}
 
-	app.logServerStarted()
-	return nil
-}
-
-func (app *App) logServerStarted() {
-	port := app.configs.APP.Port
-	baseURL := fmt.Sprintf("http://localhost%s", port)
-
-	app.logger.Info("http server started",
-		zap.String("address", baseURL),
-		zap.String("port", port),
+	app.logger.Info("grpc server started",
+		zap.String("address", fmt.Sprintf("grpc://localhost%s", app.configs.GRPC.Port)),
+		zap.String("port", app.configs.GRPC.Port),
 		zap.String("mode", app.configs.APP.Mode),
 	)
+	return nil
 }
 
 func (app *App) logStartupInfo() {
