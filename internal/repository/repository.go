@@ -1,7 +1,8 @@
 package repository
 
 import (
-	"github.com/FIFSAK/TMS/internal/domain/author"
+	"github.com/FIFSAK/TMS/internal/domain/shipment"
+	"github.com/FIFSAK/TMS/internal/repository/postgres"
 	"github.com/FIFSAK/TMS/pkg/store"
 )
 
@@ -10,7 +11,7 @@ type Configuration func(r *Repositories) error
 type Repositories struct {
 	postgres *store.SQL
 
-	Author author.Repository
+	Shipment shipment.Repository
 }
 
 func New(configs ...Configuration) (s *Repositories, err error) {
@@ -31,7 +32,7 @@ func (r *Repositories) Close() {
 	}
 }
 
-func WithSqlite(dataSourceName string) Configuration {
+func WithPostgresStore(dataSourceName string) Configuration {
 	return func(s *Repositories) (err error) {
 		s.postgres, err = store.NewSQL(dataSourceName)
 		if err != nil {
@@ -41,7 +42,9 @@ func WithSqlite(dataSourceName string) Configuration {
 		if err = store.RunMigrations(dataSourceName); err != nil {
 			return
 		}
-		//TODO finish
+
+		s.Shipment = postgres.NewShipmentRepository(s.postgres.Connection)
+
 		return
 	}
 }
