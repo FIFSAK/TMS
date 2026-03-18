@@ -59,6 +59,10 @@ func (s *Servers) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (s *Servers) GRPCServer() *grpc.Server {
+	return s.grpcServer
+}
+
 func WithGRPC(addr string, serverOpts ...grpc.ServerOption) Option {
 	return func(s *Servers) error {
 		if s.grpcServer != nil {
