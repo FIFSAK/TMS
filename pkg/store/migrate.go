@@ -4,30 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
-	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func RunMigrations(dsn string) error {
-	dsn = strings.TrimSpace(dsn)
-	if dsn == "" {
-		return fmt.Errorf("store: empty data source name")
-	}
+	migrationsPath := "file://migrations/sqlite"
 
-	u, err := url.Parse(dsn)
-	if err != nil || u.Scheme == "" {
-		return fmt.Errorf("store: invalid data source name: %w", err)
-	}
+	log.Printf("migrate: start driver=sqlite path=%s", migrationsPath)
 
-	driver := strings.ToLower(strings.Split(u.Scheme, "+")[0])
-	migrationsPath := fmt.Sprintf("file://migrations/%s", driver)
+	dbURL := fmt.Sprintf("sqlite://%s", dsn)
 
-	log.Printf("migrate: start driver=%s host=%s path=%s", driver, u.Host, migrationsPath)
-
-	m, err := migrate.New(migrationsPath, dsn)
+	m, err := migrate.New(migrationsPath, dbURL)
 	if err != nil {
 		return fmt.Errorf("migrate: new: %w", err)
 	}
@@ -41,12 +30,12 @@ func RunMigrations(dsn string) error {
 
 	if err := m.Up(); err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
-			log.Printf("migrate: no-change driver=%s", driver)
+			log.Printf("migrate: no-change driver=sqlite")
 			return nil
 		}
 		return fmt.Errorf("migrate: up: %w", err)
 	}
 
-	log.Printf("migrate: applied driver=%s", driver)
+	log.Printf("migrate: applied driver=sqlite")
 	return nil
 }
