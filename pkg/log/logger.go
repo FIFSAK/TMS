@@ -20,10 +20,6 @@ var (
 	once          sync.Once
 )
 
-func WithLogger(ctx context.Context, l *zap.Logger) context.Context {
-	return context.WithValue(ctx, loggerKey, l)
-}
-
 func FromContext(ctx context.Context) *zap.Logger {
 	if ctx == nil {
 		return GetLogger()
@@ -70,16 +66,6 @@ func NewLogger() (*zap.Logger, error) {
 	return logger, nil
 }
 
-func New() *zap.Logger {
-	l, err := NewLogger()
-	if err != nil {
-		fallback := zap.NewExample()
-		fallback.Warn("unable to build configured logger, using example fallback", zap.Error(err))
-		return fallback
-	}
-	return l
-}
-
 func initDefaultLogger() error {
 	l, err := NewLogger()
 	if err != nil {
@@ -87,11 +73,4 @@ func initDefaultLogger() error {
 	}
 	defaultLogger = l
 	return nil
-}
-
-func SyncLogger(l *zap.Logger) error {
-	if l == nil {
-		return nil
-	}
-	return l.Sync()
 }

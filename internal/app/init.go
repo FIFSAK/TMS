@@ -55,7 +55,7 @@ func (app *App) loadConfiguration() error {
 	app.configs = configs
 	app.logger.Info("configuration loaded",
 		zap.String("mode", configs.APP.Mode),
-		zap.String("grpc_port", configs.GRPC.Port),
+		zap.String("http_port", configs.HTTP.Port),
 	)
 
 	return nil
@@ -101,7 +101,7 @@ func (app *App) initializeServices() error {
 
 func (app *App) initializeServers() error {
 	servers, err := server.NewServer(
-		server.WithGRPC(app.configs.GRPC.Port),
+		server.WithHTTP(app.configs.HTTP.Port),
 	)
 	if err != nil {
 		app.logger.Error("server init error", zap.Error(err))
@@ -126,7 +126,7 @@ func (app *App) initializeHandlers() error {
 		return err
 	}
 
-	handlers.RegisterGRPC(app.servers.GRPCServer())
+	handlers.RegisterHTTP(app.servers.Router())
 
 	app.handlers = handlers
 	app.logger.Info("handlers initialized")

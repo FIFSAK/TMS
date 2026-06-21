@@ -54,7 +54,3 @@ func (s Status) ValidateTransition(next Status) error {
 	}
 	return nil
 }
-
-func (s Status) IsTerminal() bool {
-	return s == StatusDelivered || s == StatusCancelled
-}

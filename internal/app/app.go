@@ -56,9 +56,9 @@ func (app *App) startServers() error {
 		return err
 	}
 
-	app.logger.Info("grpc server started",
-		zap.String("address", fmt.Sprintf("grpc://localhost%s", app.configs.GRPC.Port)),
-		zap.String("port", app.configs.GRPC.Port),
+	app.logger.Info("http server started",
+		zap.String("address", fmt.Sprintf("http://localhost%s", app.configs.HTTP.Port)),
+		zap.String("port", app.configs.HTTP.Port),
 		zap.String("mode", app.configs.APP.Mode),
 	)
 	return nil

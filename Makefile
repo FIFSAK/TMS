@@ -1,16 +1,16 @@
-.PHONY: proto build test vet
-
-proto:
-	protoc --proto_path=proto \
-		--go_out=pkg/pb --go_opt=paths=source_relative \
-		--go-grpc_out=pkg/pb --go-grpc_opt=paths=source_relative \
-		shipment/v1/shipment.proto
+.PHONY: build run client test vet
 
 build:
 	go build ./...
 
+run:
+	go run ./cmd/tms
+
+client:
+	go run ./cmd/client
+
 test:
-	go test ./internal/domain/shipment/ ./internal/service/shipment/ -v
+	go test ./...
 
 vet:
 	go vet ./...

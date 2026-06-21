@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"github.com/go-chi/chi/v5"
+
 	"github.com/FIFSAK/TMS/internal/config"
-	grpcHandler "github.com/FIFSAK/TMS/internal/handler/grpc"
+	restHandler "github.com/FIFSAK/TMS/internal/handler/rest"
 	"github.com/FIFSAK/TMS/internal/service"
-	pb "github.com/FIFSAK/TMS/pkg/pb/shipment/v1"
-	"google.golang.org/grpc"
 )
 
 type Dependencies struct {
@@ -17,7 +17,7 @@ type Configuration func(h *Handlers) error
 
 type Handlers struct {
 	dependencies Dependencies
-	Shipment     *grpcHandler.ShipmentHandler
+	Shipment     *restHandler.ShipmentHandler
 }
 
 func New(d Dependencies, configs ...Configuration) (h *Handlers, err error) {
@@ -36,13 +36,16 @@ func New(d Dependencies, configs ...Configuration) (h *Handlers, err error) {
 
 func WithShipmentHandler() Configuration {
 	return func(h *Handlers) error {
-		h.Shipment = grpcHandler.NewShipmentHandler(h.dependencies.Services.Shipment)
+		h.Shipment = restHandler.NewShipmentHandler(h.dependencies.Services.Shipment)
 		return nil
 	}
 }
 
-func (h *Handlers) RegisterGRPC(server *grpc.Server) {
-	if h.Shipment != nil {
-		pb.RegisterShipmentServiceServer(server, h.Shipment)
-	}
+// RegisterHTTP mounts all handlers under the versioned /api/v1 group.
+func (h *Handlers) RegisterHTTP(r chi.Router) {
+	r.Route("/api/v1", func(r chi.Router) {
+		if h.Shipment != nil {
+			h.Shipment.Register(r)
+		}
+	})
 }

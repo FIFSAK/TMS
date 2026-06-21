@@ -1,6 +1,6 @@
 # Shipment Tracking Microservice (TMS)
 
-A gRPC microservice for managing shipments and tracking status changes during transportation.
+A REST/HTTP microservice for managing shipments and tracking status changes during transportation.
 
 ## Architecture
 
@@ -14,16 +14,13 @@ internal/
 │   └── repository.go    # Repository interface (port)
 ├── service/shipment/    # Application/use-case layer (business orchestration)
 ├── repository/sqlite/   # Infrastructure: SQLite implementation (adapter)
-├── handler/grpc/        # Transport: gRPC handler (adapter)
+├── handler/rest/        # Transport: REST/JSON handler (adapter)
 ├── app/                 # Application bootstrap and lifecycle
 └── config/              # Configuration management
 pkg/
-├── pb/                  # Generated protobuf/gRPC code
-├── server/              # gRPC server lifecycle management
+├── server/              # HTTP server lifecycle management
 ├── store/               # Database connection and migrations
 └── log/                 # Structured logging (zap)
-proto/
-└── shipment/v1/         # Protocol Buffer definitions
 migrations/
 └── sqlite/              # SQL migration files
 ```
@@ -32,7 +29,8 @@ migrations/
 - Domain layer has zero framework dependencies — testable in isolation
 - Repository interface defined in the domain package (Dependency Inversion)
 - Status transitions enforced at the domain level via a state machine
-- gRPC handler converts between protobuf and domain types, keeping transport concerns separate
+- REST handler converts between JSON DTOs and domain types, keeping transport concerns separate
+- Routing uses [`go-chi/chi`](https://github.com/go-chi/chi) — a lightweight, idiomatic, `net/http`-compatible router (handlers stay plain `http.HandlerFunc`). Routes are mounted under a versioned `/api/v1` group with a middleware stack: request ID, real IP, zap request logging, and panic recovery
 
 ## Shipment Lifecycle
 
@@ -51,7 +49,6 @@ cancelled  cancelled    cancelled
 ## Prerequisites
 
 - Go 1.24+
-- protoc (for regenerating protobuf code)
 
 No external database required — SQLite is embedded and runs locally (file-based).
 
@@ -60,60 +57,81 @@ No external database required — SQLite is embedded and runs locally (file-base
 1. Copy and configure environment:
    ```bash
    cp .env.dist .env
-   # Optionally edit .env to change the SQLite database file path
+   # Optionally edit .env to change the HTTP port or SQLite database file path
    ```
 
 2. Run the service:
    ```bash
-   go run cmd/tns/main.go
+   go run ./cmd/tms
+   # or: make run
    ```
 
-   The gRPC server starts on `:50051` by default (configurable via `GRPC_PORT`).
+   The HTTP server starts on `:8080` by default (configurable via `HTTP_PORT`).
 
-## Running Tests
-
-```bash
-# Domain and service tests (no database required)
-go test ./internal/domain/shipment/ ./internal/service/shipment/ -v
-
-# Or use make
-make test
-```
-
-Tests cover:
-- Shipment creation with validation
-- All valid status transitions
-- Invalid status transition rejection
-- Terminal state enforcement
-- Service-level business logic with mocked repository
+3. Exercise the API with the bundled demo client:
+   ```bash
+   go run ./cmd/client
+   # or: make client
+   ```
 
 ## Configuration
 
 | Variable       | Description                  | Default                          |
 |----------------|------------------------------|----------------------------------|
 | `APP_MODE`     | Application mode             | `dev`                            |
-| `GRPC_PORT`    | gRPC server listen address   | `:50051`                         |
+| `HTTP_PORT`    | HTTP server listen address   | `:8080`                          |
 | `SQLITE_DSN`   | SQLite database file path    | `tms.db`                         |
 
-## gRPC API
+## REST API
 
-Defined in `proto/shipment/v1/shipment.proto`:
+All shipment endpoints are mounted under the versioned `/api/v1` group.
+`GET /healthz` lives at the root (outside versioning).
 
-| RPC                | Description                          |
-|--------------------|--------------------------------------|
-| `CreateShipment`   | Create a new shipment (starts as pending) |
-| `GetShipment`      | Retrieve shipment by ID              |
-| `ListShipments`    | List all shipments                   |
-| `AddShipmentEvent` | Add a status change event            |
-| `GetShipmentEvents`| Get event history for a shipment     |
+| Method & Path                         | Description                               |
+|---------------------------------------|-------------------------------------------|
+| `POST /api/v1/shipments`              | Create a new shipment (starts as pending) |
+| `GET /api/v1/shipments`               | List all shipments                        |
+| `GET /api/v1/shipments/{id}`          | Retrieve a shipment by ID                 |
+| `POST /api/v1/shipments/{id}/events`  | Add a status change event                 |
+| `GET /api/v1/shipments/{id}/events`   | Get event history for a shipment          |
+| `GET /healthz`                        | Health check                              |
 
-## Regenerating Protobuf Code
+All request and response bodies are JSON. Status values are strings: `pending`,
+`picked_up`, `in_transit`, `delivered`, `cancelled`.
+
+### Examples
 
 ```bash
-make proto
+# Create a shipment
+curl -X POST http://localhost:8080/api/v1/shipments \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "reference_number": "SHP-2026-001",
+    "origin": "New York, NY",
+    "destination": "Los Angeles, CA",
+    "driver_name": "John Smith",
+    "unit_number": "TRUCK-42",
+    "shipment_amount": 5000.00,
+    "driver_revenue": 1500.00
+  }'
+
+# Get a shipment
+curl http://localhost:8080/api/v1/shipments/<id>
+
+# Add a status event
+curl -X POST http://localhost:8080/api/v1/shipments/<id>/events \
+  -H 'Content-Type: application/json' \
+  -d '{"status": "picked_up", "comment": "Driver picked up the shipment"}'
+
+# Get event history
+curl http://localhost:8080/api/v1/shipments/<id>/events
+
+# List all shipments
+curl http://localhost:8080/api/v1/shipments
 ```
 
-Requires `protoc`, `protoc-gen-go`, and `protoc-gen-go-grpc`.
+Error responses use `{"error": "..."}` with an appropriate HTTP status code
+(`400` validation/invalid transition, `404` not found, `500` internal).
 
 ## Assumptions
 

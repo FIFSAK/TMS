@@ -12,17 +12,17 @@ import (
 )
 
 const (
-	defaultAppMode     = "dev"
-	defaultAppPort     = ":80"
-	defaultAppHost     = "http://localhost:80"
-	defaultAppPath     = "/"
-	defaultAppTimeout  = 60 * time.Second
-	defaultGRPCPort    = ":50051"
+	defaultAppMode    = "dev"
+	defaultAppPort    = ":80"
+	defaultAppHost    = "http://localhost:80"
+	defaultAppPath    = "/"
+	defaultAppTimeout = 60 * time.Second
+	defaultHTTPPort   = ":8080"
 )
 
 type Configs struct {
 	APP   AppConfig
-	GRPC  GRPCConfig
+	HTTP  HTTPConfig
 	Store StoreConfig
 }
 
@@ -34,8 +34,8 @@ type AppConfig struct {
 	Timeout time.Duration
 }
 
-type GRPCConfig struct {
-	Port string `default:":50051"`
+type HTTPConfig struct {
+	Port string `default:":8080"`
 }
 
 type StoreConfig struct {
@@ -73,13 +73,13 @@ func New() (*Configs, error) {
 		Timeout: defaultAppTimeout,
 	}
 
-	cfg.GRPC = GRPCConfig{
-		Port: defaultGRPCPort,
+	cfg.HTTP = HTTPConfig{
+		Port: defaultHTTPPort,
 	}
 
 	targets := map[string]interface{}{
-		"APP":      &cfg.APP,
-		"GRPC":     &cfg.GRPC,
+		"APP":    &cfg.APP,
+		"HTTP":   &cfg.HTTP,
 		"SQLITE": &cfg.Store,
 	}
 

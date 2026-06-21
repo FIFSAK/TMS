@@ -2,18 +2,25 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
+	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
+
+	"github.com/FIFSAK/TMS/pkg/log"
 )
 
 type Option func(*Servers) error
 
 type Servers struct {
-	grpcServer *grpc.Server
-	grpcListen net.Listener
+	httpServer *http.Server
+	httpListen net.Listener
+	router     chi.Router
 }
 
 func NewServer(opts ...Option) (*Servers, error) {
@@ -33,47 +40,81 @@ func (s *Servers) Run(logger *zap.Logger) error {
 		logger = zap.NewNop()
 	}
 
-	if s.grpcServer == nil {
+	if s.httpServer == nil {
 		return fmt.Errorf("no servers configured to run")
 	}
 
-	if s.grpcServer != nil && s.grpcListen != nil {
-		addr := s.grpcListen.Addr().String()
-		go func() {
-			logger.Info("starting grpc server", zap.String("addr", addr))
-			if err := s.grpcServer.Serve(s.grpcListen); err != nil {
-				logger.Error("grpc serve failed", zap.String("addr", addr), zap.Error(err))
-			}
-			logger.Info("grpc server stopped", zap.String("addr", addr))
-		}()
-	}
+	addr := s.httpListen.Addr().String()
+	go func() {
+		logger.Info("starting http server", zap.String("addr", addr))
+		if err := s.httpServer.Serve(s.httpListen); err != nil && err != http.ErrServerClosed {
+			logger.Error("http serve failed", zap.String("addr", addr), zap.Error(err))
+		}
+		logger.Info("http server stopped", zap.String("addr", addr))
+	}()
 
 	return nil
 }
 
 func (s *Servers) Stop(ctx context.Context) error {
-	if s.grpcServer != nil {
-		s.grpcServer.GracefulStop()
+	if s.httpServer != nil {
+		return s.httpServer.Shutdown(ctx)
 	}
 
 	return nil
 }
 
-func (s *Servers) GRPCServer() *grpc.Server {
-	return s.grpcServer
+func (s *Servers) Router() chi.Router {
+	return s.router
 }
 
-func WithGRPC(addr string, serverOpts ...grpc.ServerOption) Option {
+func WithHTTP(addr string) Option {
 	return func(s *Servers) error {
-		if s.grpcServer != nil {
-			return fmt.Errorf("grpc server already configured")
+		if s.httpServer != nil {
+			return fmt.Errorf("http server already configured")
 		}
 		l, err := net.Listen("tcp", addr)
 		if err != nil {
-			return fmt.Errorf("listen grpc %s: %w", addr, err)
+			return fmt.Errorf("listen http %s: %w", addr, err)
 		}
-		s.grpcListen = l
-		s.grpcServer = grpc.NewServer(serverOpts...)
+
+		r := chi.NewRouter()
+		r.Use(middleware.RequestID)
+		r.Use(middleware.RealIP)
+		r.Use(requestLogger)
+		r.Use(middleware.Recoverer)
+
+		r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		})
+
+		s.router = r
+		s.httpListen = l
+		s.httpServer = &http.Server{
+			Handler:           r,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
 		return nil
 	}
+}
+
+// requestLogger logs each HTTP request using the application's zap logger.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		start := time.Now()
+		defer func() {
+			log.GetLogger().Info("http request",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Int("status", ww.Status()),
+				zap.Int("bytes", ww.BytesWritten()),
+				zap.Duration("duration", time.Since(start)),
+				zap.String("request_id", middleware.GetReqID(r.Context())),
+			)
+		}()
+		next.ServeHTTP(ww, r)
+	})
 }
